@@ -1,41 +1,38 @@
 const express = require('express');
-const cookieParser = require('cookie-parser');
 const cors = require('cors');
 require('dotenv/config');
+const { createServer } = require('http')
+const { Server: SocketIoServer } = require('socket.io')
 
 const app = express()
-// const errorHandler = require('./middleware/errorHandler') 
-
-
-const { connectDatabase } = require('./config/mongooseConnect')
-
-// middleware 
-app.use(cors({
-    origin: [process.env.ORIGIN], methods: ['GET', "POST", 'PUT', 'PATCH', "DELETE"], credentials: true
-}))
-// for consideration
-// const path = require('path');
-// app.use('/uploads/profiles', express.static(path.join(__dirname, 'uploads/profiles')));
-app.use('/uploads/profiles', express.static('/uploads/profiles'))
-app.use(cookieParser())
-app.use(express.json());
-// app.use(errorHandler); 
+// app.use(cors({
+//     origin: [process.env.ORIGIN], methods: ['GET', "POST", 'PUT', 'PATCH', "DELETE"], credentials: true
+// })) 
 
 // API port
-const PORT = process.env.PORT || 4000
+const PORT = process.env.PORT || 5000
 
-// connect to database
-connectDatabase()
 
-// routes
-const authRoute = require('./routes/auth-routes')
-// const contactsRoute = require('./routes/contacts');
-
-// referencing routes
-app.use('/api/v1/auth', authRoute)
-// app.use('/api/contacts', contactsRoute)
 
 // listen to port
-app.listen(PORT, () => {
+const server = createServer(app)
+
+const io = new SocketIoServer(server, {
+    cors: {
+        origin: process.env.ORIGIN,
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    // pingTimeout: 60000,
+    // pingInterval: 25000,
+
+});
+
+
+io.on('connection', (socket) => { 
+    console.log('socket', socket.id)
+})
+
+server.listen(PORT, () => {
     console.log(`server litening on port: ${PORT}`)
 })
