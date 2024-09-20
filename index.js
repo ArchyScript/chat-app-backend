@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv/config');
 const { createServer } = require('http')
 const { Server: SocketIoServer } = require('socket.io')
+const { userLeave, getRoomUsers, formatMessage, userJoin, getCurrentUser, botName } = require('./utils')
 
 const app = express()
 // app.use(cors({
@@ -29,8 +30,44 @@ const io = new SocketIoServer(server, {
 });
 
 
-io.on('connection', (socket) => { 
-    console.log('socket', socket.id)
+io.on('connection', (socket) => {
+    socket.on('joinRoom', (payload) => {
+        const user = userJoin({ ...payload, id: socket.id })
+        const { username, room } = user
+        socket.join(room)
+        console.log('user in join room', user)
+        socket.broadcast.to(room).emit('message', formatMessage(botName, `${username} joined the chat`))
+
+        io.to(room).emit('roomUsers', {
+            room,
+            users: getRoomUsers(room)
+        })
+    })
+
+    socket.on('chatMessage', (message) => {
+        const user = getCurrentUser(socket.id)
+        if (user) {
+            const { username, room } = user
+            // socket.to(room).emit('message', formatMessage(username, message))
+
+            io.to(room).emit('message', formatMessage(username, message))
+        }
+    })
+
+
+    socket.on('disconnect', () => {
+        const user = userLeave(socket.id)
+        if (user) {
+            const { username, room } = user
+            socket.to(room).emit('message', formatMessage(botName, `${username}  left the chat`))
+
+            io.to(room).emit('roomUsers', {
+                room,
+                users: getRoomUsers(room)
+            })
+        }
+
+    })
 })
 
 server.listen(PORT, () => {
